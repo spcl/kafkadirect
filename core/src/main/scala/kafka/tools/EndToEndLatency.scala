@@ -48,6 +48,7 @@ object EndToEndLatency {
   private val timeout: Long = 60000
   private val defaultReplicationFactor: Short = 1
   private val defaultNumPartitions: Int = 1
+  private val entryheadersize: Int = 70 // TODO check that is always true.
 
   def main(args: Array[String]) {
 
@@ -92,12 +93,19 @@ object EndToEndLatency {
       val message = randomBytesOfLen(random, messageLen)
       if (config.withRdmaProduce){
         producer.RDMAsend(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
-        consumer.RDMApoll(Duration.ofMillis(timeout)).iterator
       }else{
         producer.send(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
-        consumer.poll(Duration.ofMillis(timeout)).iterator
       }
-
+      val recordIter =  if (config.withRdmaConsume){
+              consumer.RDMApoll(Duration.ofMillis(timeout)).iterator
+            }else{
+              consumer.poll(Duration.ofMillis(timeout)).iterator
+            }
+      // Check we got results
+      if (!recordIter.hasNext) {
+        finalise()
+        throw new RuntimeException(s"poll() timed out before finding a result (timeout:[$timeout])")
+      }
     }
 
 
@@ -202,6 +210,11 @@ object EndToEndLatency {
       .ofType(classOf[java.lang.Integer])
       .defaultsTo(100)
 
+    val withRdmaConsumeOpt = parser.accepts("with-rdma-consume", "use rdma for fetching.")
+    val withRdmaProduceOpt = parser.accepts("with-rdma-produce", "use rdma for producing.")
+
+    val withSlotsOpt = parser.accepts("withslots", "use rdma slots for fetching.")
+
     val consumerConfigOpt = parser.accepts("consumer.config", "Consumer config properties file.")
       .withRequiredArg
       .describedAs("consumer config file")
@@ -212,8 +225,6 @@ object EndToEndLatency {
       .describedAs("producer config file")
       .ofType(classOf[String])
 
-    val withRdmaConsumeOpt = parser.accepts("with-rdma-consume", "use rdma for fetching.")
-    val withRdmaProduceOpt = parser.accepts("with-rdma-produce", "use rdma for producing.")
 
     options = parser.parse(args: _*)
 
@@ -225,6 +236,7 @@ object EndToEndLatency {
     val withRdmaConsume = options.has(withRdmaConsumeOpt)
     val withRdmaProduce = options.has(withRdmaProduceOpt)
 
+    val withrdmaslots = options.has(withSlotsOpt) //extremely important
 
 
     val consumerProps = if (options.has(consumerConfigOpt))
@@ -232,10 +244,19 @@ object EndToEndLatency {
     else
       new Properties
 
+    val acks = options.valueOf(acksOpt)
+    val topic = options.valueOf(topicOpt)
+    val numMessages = options.valueOf(numMessagesOpt).intValue
+    val messageLen = options.valueOf(fetchSizeOpt).intValue
+
+
+
     consumerProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, options.valueOf(bootstrapServersOpt))
     consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + System.currentTimeMillis())
     consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
     consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
+    consumerProps.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (messageLen + entryheadersize).toString) // for RDMA
+    consumerProps.put(ConsumerConfig.WITH_SLOTS, withrdmaslots.toString) // for RDMA
     consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     consumerProps.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, "0") // ensure we have no temporal batching
@@ -258,10 +279,7 @@ object EndToEndLatency {
     producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
     producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
 
-    val acks = options.valueOf(acksOpt)
-    val topic = options.valueOf(topicOpt)
-    val numMessages = options.valueOf(numMessagesOpt).intValue
-    val messageLen = options.valueOf(fetchSizeOpt).intValue
+
 
   }
 }

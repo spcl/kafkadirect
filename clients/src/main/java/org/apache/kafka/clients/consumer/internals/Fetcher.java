@@ -154,8 +154,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
     private final int warmup = 2000;
     private final boolean measure_latency;
-    private final LinkedList<Float> latencies_with_data;
-    private final LinkedList<Float> latencies_no_data;
+    private final LinkedList<Float> latencies_with_data; // replies to fetch request with data
+    private final LinkedList<Float> latencies_no_data; // replies to fetch request without data
 
     public Fetcher(LogContext logContext,
                    ConsumerNetworkClient client,
@@ -377,6 +377,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                                 }
 
                                 // ktaranov: record the latency
+                                // had to use my measure time to have microsecond accuracy
                                 if(measure_latency){
                                     float timeUs = (float)((System.nanoTime()-beginTime)/1000.0);
                                     if(response.responseData().size() > 0){
@@ -828,6 +829,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                 log.debug("Sending RDMA {} {} to broker {}", isolationLevel, requests, fetchTarget);
             }
 
+            //final long beginTime = measure_latency ? System.nanoTime() : 0;
 
             for (RDMAWrBuilder request : requests) {
              //   System.out.println("send");
@@ -878,6 +880,12 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
 
                                     completedFetches.add(new CompletedFetch(partition, fetchOffset, fetchData, metricAggregator,
                                             apiversion));
+
+                                    // ktaranov: record the latency
+                                    if(measure_latency){
+                                        float timeUs = (float)((response.requestLatencyNanos())/1000.0);
+                                        latencies_with_data.add(timeUs);
+                                    }
 
                                     sensors.fetchLatency.record(response.requestLatencyNanos() / 1_000_000L); // convert to miliseconds
                                 }

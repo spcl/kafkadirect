@@ -11,8 +11,8 @@ import scala.util.Random
 object ProducerLatency {
 
   def main(args: Array[String]) {
-    if (args.length != 5 && args.length != 6) {
-      System.err.println("USAGE: java " + getClass.getName + " broker_list topic num_messages producer_acks message_size_bytes [optional] properties_file")
+    if (args.length != 6 && args.length != 7) {
+      System.err.println("USAGE: java " + getClass.getName + " broker_list topic num_messages producer_acks message_size_bytes withrdma [optional] properties_file")
       Exit.exit(1)
     }
 
@@ -21,8 +21,11 @@ object ProducerLatency {
     val numMessages = args(2).toInt
     val producerAcks = args(3)
     val messageLen = args(4).toInt
-    val propsFile = if (args.length > 5) Some(args(5)).filter(_.nonEmpty) else None
+    val withrdma = args(5).contentEquals("withrdma")
+    val propsFile = if (args.length > 6) Some(args(6)).filter(_.nonEmpty) else None
     val warmup = 2000
+
+
 
     if (!List("1", "all").contains(producerAcks))
       throw new IllegalArgumentException("Latency testing requires synchronous acknowledgement. Please use 1 or all")
@@ -51,13 +54,22 @@ object ProducerLatency {
 
     for( i <- 0 until warmup) {
       val message = randomBytesOfLen(random, messageLen)
-      producer.send(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
+      if(withrdma){
+        producer.RDMAsend(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
+      }else{
+        producer.send(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
+      }
+
     }
 
     for (i <- 0 until numMessages) {
       val message = randomBytesOfLen(random, messageLen)
       val begin = System.nanoTime
-      producer.send(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
+      if(withrdma){
+        producer.RDMAsend(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
+      }else{
+        producer.send(new ProducerRecord[Array[Byte], Array[Byte]](topic, message)).get()
+      }
       val elapsed = System.nanoTime - begin
 
 

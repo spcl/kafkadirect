@@ -13,17 +13,21 @@ import scala.collection.JavaConverters._
 
 object ConsumerLatency {
   private val timeout: Long = 60000
+  private val entryheadersize: Int = 70 // TODO check that is always true.
 
   def main(args: Array[String]) {
-    if (args.length != 3 && args.length != 4) {
-      System.err.println("USAGE: java " + getClass.getName + " broker_list topic num_messages [optional] properties_file")
+    if (args.length != 5 && args.length != 6) {
+      System.err.println("USAGE: java " + getClass.getName + " broker_list topic num_messages datasize withrdma [optional] properties_file")
       Exit.exit(1)
     }
 
     val brokerList = args(0)
     val topic = args(1)
     val numMessages = args(2).toInt
-    val propsFile = if (args.length > 3) Some(args(3)).filter(_.nonEmpty) else None
+    val datasize = args(3).toInt
+    val withrdma = args(4).contains("withrdma")
+    val withrdmaslots = args(4).contentEquals("withrdmaslots")
+    val propsFile = if (args.length > 5) Some(args(5)).filter(_.nonEmpty) else None
 
     def loadPropsWithBootstrapServers: Properties = {
       val props = propsFile.map(Utils.loadProps).getOrElse(new Properties())
@@ -35,7 +39,8 @@ object ConsumerLatency {
     consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "latency-group-" + System.currentTimeMillis())
     consumerProps.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
     consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-    consumerProps.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, "1")
+    consumerProps.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (datasize + entryheadersize).toString) // for RDMA
+    consumerProps.put(ConsumerConfig.WITH_SLOTS, withrdmaslots.toString) // for RDMA.
     consumerProps.put(ConsumerConfig.MEASURE_LATENCY_CONFIG, "true")
     consumerProps.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG,"1");
     consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
@@ -56,7 +61,11 @@ object ConsumerLatency {
 
     for (i <- 0 until numMessages) {
       // latency will be measured by the Fetcher of KafkaConsumer
-      consumer.poll(Duration.ofMillis(timeout))
+      if(withrdma){
+        consumer.RDMApoll(Duration.ofMillis(timeout))
+      }else {
+        consumer.poll(Duration.ofMillis(timeout))
+      }
     }
 
     finalise()
