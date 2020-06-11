@@ -62,6 +62,11 @@ public class ProducerPerformance {
             String transactionalId = res.getString("transactionalId");
             boolean shouldPrintMetrics = res.getBoolean("printMetrics");
             final boolean withRdma = res.getBoolean("withRdma");
+            if(withRdma){
+                System.out.printf("With RDMA \n");
+            }else{
+                System.out.printf("No RDMA \n");
+            }
             long transactionDurationMs = res.getLong("transactionDurationMs");
             boolean transactionsEnabled =  0 < transactionDurationMs;
 
@@ -278,13 +283,17 @@ public class ProducerPerformance {
                 .dest("printMetrics")
                 .help("print out metrics at the end of the test.");
 
-        parser.addArgument("--with-rdma")
+        parser.addArgument("--withrdma")
                 .action(storeTrue())
                 .type(Boolean.class)
                 .metavar("WITH-RDMA")
                 .dest("withRdma")
                 .help("use rdma for producing");
 
+        parser.addArgument("--nordma")
+                .action(storeTrue())
+                .type(Boolean.class)
+                .dest("nordma");
 
         parser.addArgument("--transactional-id")
                .action(store())
@@ -342,7 +351,7 @@ public class ProducerPerformance {
             this.reportingInterval = reportingInterval;
         }
 
-        public void record(int iter, int latency, int latencyNano, int bytes, long time) {
+        public void record(int iter, int latency, int latencyMirco, int bytes, long time) {
             this.count++;
             this.bytes += bytes;
             this.totalLatency += latency;
@@ -352,7 +361,7 @@ public class ProducerPerformance {
             this.windowTotalLatency += latency;
             this.windowMaxLatency = Math.max(windowMaxLatency, latency);
             if (iter % this.sampling == 0) {
-                this.latencies[index] = latencyNano;
+                this.latencies[index] = latencyMirco;
                 this.index++;
             }
             /* maybe report the recent perf */
@@ -393,16 +402,17 @@ public class ProducerPerformance {
             double recsPerSec = 1000.0 * count / (double) elapsed;
             double mbPerSec = 1000.0 * this.bytes / (double) elapsed / (1024.0 * 1024.0);
             int[] percs = percentiles(this.latencies, index, 0.5, 0.95, 0.99, 0.999);
-            System.out.printf("%d records sent, %f records/sec (%.2f MB/sec), %.2f ms avg latency, %.2f ms max latency, %.2f us 50th, %.2f us 95th, %.2f us 99th, %.2f us 99.9th.%n",
+            System.out.printf("%d records sent, %.1f records/sec (%.2f MB/sec), %.2f ms avg latency, %.2f ms max latency," +
+                            " %d us 50th, %d us 95th, %d us 99th, %d us 99.9th.%n",
                               count,
                               recsPerSec,
                               mbPerSec,
                               totalLatency / (double) count,
                               (double) maxLatency,
-                              percs[0] / 1000.0,
-                              percs[1] / 1000.0,
-                              percs[2] / 1000.0,
-                              percs[3] / 1000.0);
+                              percs[0] ,
+                              percs[1] ,
+                              percs[2] ,
+                              percs[3] );
         }
 
         private static int[] percentiles(int[] latencies, int count, double... percentiles) {
@@ -436,8 +446,9 @@ public class ProducerPerformance {
             long nowNano = System.nanoTime();
             long now = System.currentTimeMillis();
             int latency = (int) (now - start);
-            int latencyNano = (int) (nowNano - startNano);
-            this.stats.record(iteration, latency, latencyNano, bytes, now);
+            int latencyMicro = (int) ((nowNano - startNano)/1000);
+
+            this.stats.record(iteration, latency, latencyMicro, bytes, now);
             if (exception != null)
                 exception.printStackTrace();
         }

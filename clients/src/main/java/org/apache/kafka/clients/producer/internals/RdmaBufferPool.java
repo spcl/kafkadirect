@@ -167,7 +167,14 @@ class RdmaSegment {
 
     // Protected for testing.
     protected ByteBuffer allocateByteBuffer(int size) {
-        return ByteBuffer.allocateDirect(size);
+
+        try{
+           ByteBuffer buf = ByteBuffer.allocateDirect(size);
+           return buf;
+        } catch (OutOfMemoryError ignored) {
+            System.out.println("Allocate size: " + size);
+            throw new OutOfMemoryError();
+        }
     }
 
 

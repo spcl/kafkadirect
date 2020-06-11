@@ -313,7 +313,7 @@ public abstract class RdmaClient  {
         try {
             handleWC(responses, completed, nowNanos);
         } catch (Exception e) {
-            System.out.println("Error on handleWC" + e.toString());
+            System.out.println("Error on handleWC " + e.toString());
         }
 
 

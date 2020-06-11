@@ -410,7 +410,7 @@ public class ProducerConfig extends AbstractConfig {
                                         RDMA_RECV_SIZE_DOC)
                                 .define(RDMA_QUOTA_SIZE,
                                         Type.INT,
-                                        78,
+                                        50,
                                         atLeast(1),
                                         Importance.LOW,
                                         RDMA_QUOTA_SIZE_DOC)
