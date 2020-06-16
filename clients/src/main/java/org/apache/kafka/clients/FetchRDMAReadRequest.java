@@ -53,6 +53,7 @@ public class FetchRDMAReadRequest implements RDMAWrBuilder {
         return topicPartition;
     }
 
+    public long getFetchOffset() { return offset; }
     @Override
     public LinkedList<IbvSendWR> build() {
         LinkedList<IbvSendWR> wrs = new LinkedList<>();

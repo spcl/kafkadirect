@@ -150,9 +150,12 @@ object ConsumerPerformance extends LazyLogging {
 
     if (messagesRead < count)
       println(s"WARNING: Exiting before consuming the expected number of messages: timeout ($timeout ms) exceeded. " +
-        "You can use the --timeout option to increase the timeout.")
+        "You can use the --timeout option to increase the timeout. Consumed %d entries".format(messagesRead))
     totalMessagesRead.set(messagesRead)
     totalBytesRead.set(bytesRead)
+    if (config.showDetailedStats)
+      printConsumerProgress(0, bytesRead, lastBytesRead, messagesRead, lastMessagesRead,
+        lastReportTime, currentTimeMillis, config.dateFormat, joinTimeMsInSingleRound)
   }
 
   def printConsumerProgress(id: Int,
@@ -244,7 +247,9 @@ object ConsumerPerformance extends LazyLogging {
       .describedAs("config file")
       .ofType(classOf[String])
     val printMetricsOpt = parser.accepts("print-metrics", "Print out the metrics.")
-    val withRdmaOpt = parser.accepts("with-rdma", "use rdma fetch.")
+    val withRdmaOpt = parser.accepts("withrdma", "use rdma fetch.")
+    val noRdmaOpt = parser.accepts("nordma", "do not use rdma fetch.")
+
     val showDetailedStatsOpt = parser.accepts("show-detailed-stats", "If set, stats are reported for each reporting " +
       "interval as configured by reporting-interval")
     val recordFetchTimeoutOpt = parser.accepts("timeout", "The maximum allowed time in milliseconds between returned records.")

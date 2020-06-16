@@ -16,13 +16,7 @@
  */
 package org.apache.kafka.clients.consumer.internals;
 
-import org.apache.kafka.clients.Metadata;
-import org.apache.kafka.clients.StaleMetadataException;
-import org.apache.kafka.clients.FetchSessionHandler;
-import org.apache.kafka.clients.FetchRdmaSessionHandler;
-import org.apache.kafka.clients.ClientResponse;
-import org.apache.kafka.clients.ClientRDMAResponse;
-import org.apache.kafka.clients.RDMAWrBuilder;
+import org.apache.kafka.clients.*;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
@@ -861,7 +855,6 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                                     }
 
                                     TopicPartition partition = data.topicPartition;
-                                    long fetchOffset = subscriptions.position(partition);
 
                                     long highWatermark = data.highWatermark;
                                     long lastStableOffset = data.lastStableOffset;
@@ -874,6 +867,16 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                                     FetchResponse.PartitionData<Records> fetchData =
                                             new FetchResponse.PartitionData<Records>(Errors.NONE, highWatermark, lastStableOffset,
                                                     FetchRequest.INVALID_LOG_START_OFFSET, null, memRecords);
+
+
+                                    long fetchOffset = ((FetchRDMAReadRequest)response.getRequest()).getFetchOffset();
+                                    long realFetchOffset = memRecords.records().iterator().next().offset();
+                                    if (fetchOffset != realFetchOffset) { // TODO fix later"
+                                        fetchOffset = realFetchOffset;
+                                        // it is 100% correct code, but it would be nice to avoid it
+                                        // it happens when I call this function without waiting for completions.
+                                        // It probably happens because of pollForRDMAFetches and sendRdmaFetches.
+                                    }
 
                                     log.debug("RdmaFetch {} at offset {} for partition {} returned fetch data {}",
                                             isolationLevel, fetchOffset, partition, fetchData);

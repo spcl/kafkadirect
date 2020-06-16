@@ -197,7 +197,7 @@ public class FetchRdmaSessionHandler {
 
 
     public RDMAWrBuilder getFetchRequestForPartiton(TopicPartition partition, IsolationLevel isolationLevel, long offset) {
-        return sessionPartitions.get(partition).getFetchRequest(isolationLevel);
+        return sessionPartitions.get(partition).getFetchRequest(isolationLevel,offset);
     }
 
 
@@ -500,7 +500,7 @@ public class FetchRdmaSessionHandler {
             set.add(fetch);
         }
 
-        public RDMAWrBuilder getFetchRequest(IsolationLevel isolationLevel) {
+        public RDMAWrBuilder getFetchRequest(IsolationLevel isolationLevel, long offset) {
 
             long maxFetchablePosition = activeSegment.currentHighWatermarkPosition;
             int length = (int) Math.min(maxFetchablePosition - activeSegment.lastRequestedOffsetPosition, cacheSize - cachePosition);
@@ -510,10 +510,11 @@ public class FetchRdmaSessionHandler {
             else {
 
                 length = Math.min(length, fetchSize);
+
                 ByteBuffer targetBuffer = ((ByteBuffer) cache.duplicate().position(cachePosition).limit(cachePosition + length)).slice();
 
                 FetchRDMAReadRequest req =
-                        new FetchRDMAReadRequest(topicPartition, activeSegment.fetchBaseOffset,
+                        new FetchRDMAReadRequest(topicPartition, offset, //activeSegment.fetchBaseOffset,
                                 activeSegment.startAddress + activeSegment.lastRequestedOffsetPosition,
                                 activeSegment.rkey, length, targetBuffer, mr.getLkey());
 
