@@ -881,6 +881,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                                     log.debug("RdmaFetch {} at offset {} for partition {} returned fetch data {}",
                                             isolationLevel, fetchOffset, partition, fetchData);
 
+                                   // System.out.printf("fetchOffset %d \n",fetchOffset);
+
                                     completedFetches.add(new CompletedFetch(partition, fetchOffset, fetchData, metricAggregator,
                                             apiversion));
 

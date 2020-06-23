@@ -314,7 +314,7 @@ class ReplicationProcessor( brokerConfig: KafkaConfig,
           handleAddressResponse(response)
         }
       }
-      val requestBuilder = new RDMAProduceAddressRequest.Builder(1, newTopicPartitions, rollTopicPartitions, 1000, true)
+      val requestBuilder = new RDMAProduceAddressRequest.Builder(1, newTopicPartitions, rollTopicPartitions, 1000, true,true)
       networkClient.sendRequest(node, requestBuilder, callback)
     }
   }
@@ -582,7 +582,7 @@ class ReplicationHandler(partition: Partition, replica:Replica, val node: Node, 
       return
     }
     this.baseOffset=response.baseOffset
-    this.currentAddress = response.address
+    this.currentAddress = response.address + response.addrPositionOffset
     this.immdata = response.immdata
     this.rkey = response.rkey
     this.lastAddress = response.address + response.length

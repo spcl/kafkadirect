@@ -53,6 +53,10 @@ public class RdmaBufferPool {
 
     private final AtomicInteger numberOfSegments;
 
+
+    private final RdmaSegment specialSlotSegments;
+
+
     /**
      * Create a new buffer pool
      *
@@ -66,6 +70,25 @@ public class RdmaBufferPool {
         segments.put(segment.getStartAddress(), segment);
         numberOfSegments = new AtomicInteger(1);
         this.tcpTimeout = tcpTimeout;
+
+        this.specialSlotSegments = new RdmaSegment(4096, rdmaClient);
+    }
+
+    // fast enabling shared Produce path!
+    public ByteBuffer allocateSlot( ) throws InterruptedException {
+
+        ByteBuffer buffer = specialSlotSegments.allocate(8, 0); //
+        if (buffer != null)
+            return buffer;
+        throw new RuntimeException("no memory for slots!");
+    }
+
+    public void deallocateSlot(ByteBuffer buffer) {
+        specialSlotSegments.deallocate(buffer);
+    }
+
+    public int getSlotLkey() {
+        return specialSlotSegments.getLkey();
     }
 
     /**
@@ -167,12 +190,11 @@ class RdmaSegment {
 
     // Protected for testing.
     protected ByteBuffer allocateByteBuffer(int size) {
-
         try{
            ByteBuffer buf = ByteBuffer.allocateDirect(size);
            return buf;
         } catch (OutOfMemoryError ignored) {
-            System.out.println("Allocate size: " + size);
+            System.out.println("Failed Allocate size: " + size);
             throw new OutOfMemoryError();
         }
     }

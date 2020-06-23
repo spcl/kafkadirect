@@ -98,7 +98,7 @@ class KafkaApis(val requestChannel: RequestChannel,
   val adminZkClient = new AdminZkClient(zkClient)
 
   // manager for registration of RDMA producers
-  val producerRdmaManager: ProducerRdmaManager = new ProducerRdmaManager
+  val producerRdmaManager: ProducerRdmaManager = new ProducerRdmaManager(rdmaManager.rdmaPD)
 
 
   def close() {
@@ -598,8 +598,7 @@ class KafkaApis(val requestChannel: RequestChannel,
 
     val isFromLeader: Boolean =  rdmaAddressRequest.isFromLeader
 
-    val exclusive: Boolean = true
-
+    val exclusive: Boolean = rdmaAddressRequest.isExclusive
 
     val authorizedRequestInfo = rdmaAddressRequest.partitions.asScala
     val authorizedUpdateRequestInfo = rdmaAddressRequest.partitionsToUpdate().asScala
@@ -625,10 +624,16 @@ class KafkaApis(val requestChannel: RequestChannel,
               val mr : IbvMr = rdmaManager.getIbvBuffer(found.bytebuffer)
 
               val producerImmId = producerRdmaManager.createProducerIdForSegment(topicPartition,found.baseOffset,found.startPosition,
-                clientId,found.bytebuffer,request,rdmaAddressRequest.acks(),rdmaAddressRequest.timeout(),isFromLeader)
+                clientId,found.bytebuffer,request,rdmaAddressRequest.acks(),rdmaAddressRequest.timeout(),isFromLeader,exclusive)
+
+              // crete fake ibvmr or actual if not exclusive
+              val produceSlotMr : IbvMr =
+                producerRdmaManager.createOrGetProduceSlot(exclusive,topicPartition,found.baseOffset,found.startPosition)
 
               new RDMAProduceAddressResponse.PartitionResponse(Errors.NONE,found.baseOffset,found.offset,
-                mr.getAddr()+found.startPosition,  mr.getRkey(), producerImmId, mr.getLength()-found.startPosition.toInt) //found.endPosition-found.startPosition
+                mr.getAddr(), found.startPosition.toInt,  mr.getRkey(), producerImmId, mr.getLength()-found.startPosition.toInt,
+                produceSlotMr.getAddr, produceSlotMr.getRkey)//found.endPosition-found.startPosition
+
             case None =>
               new RDMAProduceAddressResponse.PartitionResponse(Errors.UNKNOWN_TOPIC_OR_PARTITION)
           }

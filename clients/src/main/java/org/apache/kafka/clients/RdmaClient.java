@@ -345,7 +345,7 @@ public abstract class RdmaClient  {
             Deque<PendingRequest> reqs = isRecv ? this.pendingRecvRequests.get(qpnum) :
                                                   this.pendingSendRequests.get(qpnum);
 
-            if (reqs == null) {
+            if (reqs == null || reqs.isEmpty()) {
                 continue;
             }
 

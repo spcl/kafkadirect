@@ -51,6 +51,7 @@ allprojects {
 
   repositories {
     mavenCentral()
+    flatDir dirs: "/home/ktaranov/Documents/disni/target/"
   }
   
   apply plugin: 'idea'

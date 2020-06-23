@@ -115,7 +115,10 @@ public final class ExclusiveRdmaClient extends RdmaClient {
 
         // now let's connect to the server
         RdmaConnParam connParam = new RdmaConnParam();
-        connParam.setRetry_count((byte) 2);
+        connParam.setRetry_count((byte) 3);
+        connParam.setRnr_retry_count((byte)3);
+        connParam.setInitiator_depth((byte)32); // cap.maxSendWr
+        connParam.setResponder_resources((byte)0);
         idPriv.connect(connParam);
 
         // wait until we are really connected

@@ -49,6 +49,9 @@ should_include_file() {
 
 base_dir=$(dirname $0)/..
 
+# for debugging
+#export KAFKA_LOG4J_OPTS="-Dlog4j.configuration=file:$base_dir/config/log4j.properties" 
+
 if [ -z "$SCALA_VERSION" ]; then
   SCALA_VERSION=2.12.8
 fi

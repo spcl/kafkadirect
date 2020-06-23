@@ -100,6 +100,7 @@ public final class RecordAccumulator {
 
 
     private final RdmaBufferPool freerdma;
+
     private final RdmaSessionHandlers rdmaSessionHandlers;
 
     /**
@@ -168,7 +169,6 @@ public final class RecordAccumulator {
         this.rdmaAppendsInProgress = new AtomicInteger(0);
         this.rdmabatches = new CopyOnWriteMap<>();
 
-
         this.freerdma = rdmaBufferPool;
 
         this.free = bufferPool;
@@ -177,10 +177,11 @@ public final class RecordAccumulator {
         this.time = time;
         this.apiVersions = apiVersions;
         this.transactionManager = transactionManager;
-        if (this.freerdma != null)
+        if (this.freerdma != null) {
             this.rdmaSessionHandlers = new RdmaSessionHandlers(freerdma, rdmaBufferPool.tcpTimeout); // small hack. I did not want to introduce anotehr constructor
-        else
+        }else {
             this.rdmaSessionHandlers = null;
+        }
         registerMetrics(metrics, metricGrpName);
     }
 
@@ -394,7 +395,7 @@ public final class RecordAccumulator {
      */
     public void reenqueue(ProducerBatch batch, long now) {
         batch.reenqueued(now);
-        Deque<ProducerBatch> deque = getOrCreateDeque(batch.topicPartition);
+        Deque<ProducerBatch> deque = batch.isRDMA() ? getRdmaDeque(batch.topicPartition) : getDeque(batch.topicPartition);
         synchronized (deque) {
             if (transactionManager != null)
                 insertInSequenceOrder(deque, batch);
@@ -743,6 +744,8 @@ public final class RecordAccumulator {
      * Get the deque for the given topic-partition, creating it if necessary.
      */
     private Deque<ProducerBatch> getOrCreateDeque(TopicPartition tp) {
+
+      //  rdmabatches
         Deque<ProducerBatch> d = this.batches.get(tp);
         if (d != null)
             return d;

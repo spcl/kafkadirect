@@ -375,7 +375,10 @@ private[kafka] class RdmaProcessor(val id: Int,
   private val pollCqCall= sendrecvCq.poll(wcList, wcBatch)
 
   val connParam = new RdmaConnParam
-  connParam.setRetry_count(2.toByte)
+  connParam.setRetry_count(3.toByte)
+  connParam.setRnr_retry_count(3.toByte)
+  connParam.setInitiator_depth(0.toByte);
+  connParam.setResponder_resources(16.toByte);
 
   private val newConnections = new ArrayBlockingQueue[RdmaCmId](connectionQueueSize)
 

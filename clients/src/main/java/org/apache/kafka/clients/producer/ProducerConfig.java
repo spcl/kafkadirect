@@ -246,6 +246,7 @@ public class ProducerConfig extends AbstractConfig {
     public static final String RDMA_SEND_SIZE = "num.rdmanetwork.maxsendsize";
     public static final String RDMA_SEND_SIZE_DOC = "maximum send requests per rdma connection";
 
+
     /** <code> num.rdmanetwork.maxrecvsize </code> */
     public static final String RDMA_RECV_SIZE = "num.rdmanetwork.maxrecvsize";
     public static final String RDMA_RECV_SIZE_DOC = "maximum recv requests per rdma connection";
@@ -275,7 +276,8 @@ public class ProducerConfig extends AbstractConfig {
     public static final String RDMA_CACHE_SIZE = "num.rdmaproduce.cachesize";
     public static final String RDMA_CACHE_SIZE_DOC = "the size of a single cache used for rdma batches";
 
-
+    public static final String EXCLUSIVE_RDMA = "enable.rdmaproduce.exclusive";
+    public static final String EXCLUSIVE_RDMA_DOC = "exclusive or shared produce mode";
 
     static {
         CONFIG = new ConfigDef().define(BOOTSTRAP_SERVERS_CONFIG, Type.LIST, Collections.emptyList(), new ConfigDef.NonNullValidator(), Importance.HIGH, CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)
@@ -443,7 +445,12 @@ public class ProducerConfig extends AbstractConfig {
                                         16 * 1024 * 1024, // 16 MiB
                                         atLeast(1 * 1024), // 1 KiB
                                         Importance.LOW,
-                                        RDMA_CACHE_SIZE_DOC);
+                                        RDMA_CACHE_SIZE_DOC)
+                                .define(EXCLUSIVE_RDMA,
+                                        Type.BOOLEAN,
+                                        true,
+                                        Importance.LOW,
+                                        EXCLUSIVE_RDMA_DOC);
     }
 
     @Override

@@ -53,7 +53,7 @@ versions += [
   argparse4j: "0.7.0",
   bcpkix: "1.60",
   httpclient: "4.5.7",
-  disni: "2.1",
+  disni: "2.2",
   easymock: "4.0.2",
   gradle: "5.1.1",
   jackson: "2.10.0",

@@ -21,6 +21,7 @@ import com.ibm.disni.verbs.IbvSendWR;
 import com.ibm.disni.verbs.IbvSendWR.Rdma;
 import com.ibm.disni.verbs.IbvSge;
 import org.apache.kafka.clients.producer.internals.ProducerBatch;
+import org.apache.kafka.clients.producer.internals.RdmaSessionHandlers;
 import org.apache.kafka.common.record.MemoryRecords;
 
 import java.nio.ByteBuffer;
@@ -40,7 +41,10 @@ public class ProduceRDMAWriteRequest implements RDMAWrBuilder {
     private final ProducerBatch batch;
     public final long baseOffset;
 
-    public ProduceRDMAWriteRequest(ProducerBatch batch, long baseOffset, long remoteAddress, int rkey,  int lkey, int immdata) {
+    public ProduceAtomicFetchRDMAWriteRequest prereq;
+    final public RdmaSessionHandlers.ProduceRdmaRequestData owner;
+
+    public ProduceRDMAWriteRequest(ProducerBatch batch, long baseOffset, long remoteAddress, int rkey,  int lkey, int immdata, RdmaSessionHandlers.ProduceRdmaRequestData owner) {
         this.batch = batch;
         this.remoteAddress = remoteAddress;
         this.rkey = rkey;
@@ -49,7 +53,10 @@ public class ProduceRDMAWriteRequest implements RDMAWrBuilder {
         this.lkey = lkey;
         this.immdata = immdata;
         this.baseOffset = baseOffset;
+        this.prereq = null;
+        this.owner = owner;
     }
+
 
     public ProduceRDMAWriteRequest(long remoteAddress, int rkey, int length, ByteBuffer targetBuffer, int lkey, int immdata) {
         this.batch = null;
@@ -60,10 +67,25 @@ public class ProduceRDMAWriteRequest implements RDMAWrBuilder {
         this.lkey = lkey;
         this.immdata = immdata;
         this.baseOffset = 0;
+        this.prereq = null;
+        this.owner = null;
     }
 
     public ProducerBatch getBatch() {
         return batch;
+    }
+
+    public void setAtomicPreop(ProduceAtomicFetchRDMAWriteRequest prereq ){
+        this.prereq = prereq;
+    }
+
+    public boolean hasAtomicPreop( ){
+        return this.prereq != null;
+    }
+
+
+    public void incrementAddress(int offset){
+        remoteAddress+=offset;
     }
 
     public void updateBuffer(MemoryRecords records) {

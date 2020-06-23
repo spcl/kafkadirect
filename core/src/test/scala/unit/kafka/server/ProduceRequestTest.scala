@@ -98,7 +98,7 @@ class ProduceRequestTest extends BaseRequestTest {
 
     val toUpdate: List[TopicPartition]  = List()
 
-    val request = new RDMAProduceAddressRequest.Builder(-1,tplist,toUpdate.asJava,3000).build()
+    val request = new RDMAProduceAddressRequest.Builder(-1,tplist,toUpdate.asJava,3000,false,true).build()
     val addressResponse = sendProduceAddressRequest(leader,request)
 
     val clientAddress = addressResponse.responses().get(topicPartition)

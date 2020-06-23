@@ -125,7 +125,7 @@ public class ProducerPerformance {
                     payload[i] = (byte) (random.nextInt(26) + 65);
             }
             ProducerRecord<byte[], byte[]> record;
-            Stats stats = new Stats(numRecords, 5000);
+            Stats stats = new Stats(numRecords, 500);
             long startMs = System.currentTimeMillis();
 
             ThroughputThrottler throttler = new ThroughputThrottler(throughput, startMs);

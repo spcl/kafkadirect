@@ -995,8 +995,12 @@ class Partition(val topicPartition: TopicPartition,
             }
           }
 
-          return Some(new ConsumerAddressReadInfo(addrinfo,fileIsSealed,localReplica.highWatermark.relativePositionInSegment,localReplica.highWatermark.messageOffset,
-            localReplica.lastStableOffset.messageOffset,localReplica.lastStableOffset.relativePositionInSegment))
+          return Some(new ConsumerAddressReadInfo(addrinfo,fileIsSealed,
+            if (localReplica.highWatermark.segmentBaseOffset > addrinfo.baseOffset) addrinfo.endPosition else localReplica.highWatermark.relativePositionInSegment,
+            localReplica.highWatermark.messageOffset,
+            if (localReplica.lastStableOffset.segmentBaseOffset > addrinfo.baseOffset) addrinfo.endPosition else localReplica.lastStableOffset.messageOffset,
+            localReplica.lastStableOffset.relativePositionInSegment)
+          )
         }
         None
       case None =>

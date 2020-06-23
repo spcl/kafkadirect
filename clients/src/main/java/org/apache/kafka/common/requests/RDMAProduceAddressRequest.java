@@ -44,7 +44,10 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
     private static final Field.ComplexArray TOPICS_TO_UPDATE = new Field.ComplexArray("topics to update",
             "Topics to fetch offsets. If the topic array is null fetch offsets for all topics.");
 
-    private static final Field.Bool IS_FROM_LEADER = new Field.Bool("is_freom_leader",
+    private static final Field.Bool IS_FROM_LEADER = new Field.Bool("is_from_leader",
+            "Indicates that request comes from broker leader");
+
+    private static final Field.Bool IS_EXCLUSIVE= new Field.Bool("is_exclusive",
             "Indicates that request comes from broker leader");
 
     // topic level fields
@@ -72,7 +75,7 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
 
 
     private static final Schema RDMA_PRODUCE_ADDRESS_REQUEST_V0 =  new Schema(
-            IS_FROM_LEADER,
+            IS_FROM_LEADER,IS_EXCLUSIVE,
             TOPICS_V0,
             TOPIC_DATA_TO_UPDATE_V0,
             new Field(TIMEOUT_KEY_NAME, INT32, "The time to await a response in ms."),
@@ -91,30 +94,28 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
         private final int timeout;
         private final short acks;
         private final boolean fromLeader;
-
+        private final boolean isExclusive;
 
 
         public Builder(short acks,
                        List<TopicPartition> topicPartitions,
-                       List<TopicPartition> toUpdate, int timeout) {
-            this(acks, topicPartitions, toUpdate, timeout, false);
-        }
-
-        public Builder(short acks,
-                       List<TopicPartition> topicPartitions,
-                       List<TopicPartition> toUpdate, int timeout, boolean fromLeader) {
+                       List<TopicPartition> toUpdate, int timeout, boolean fromLeader, boolean isExclusive) {
             super(ApiKeys.PRODUCER_RDMA_REGISTER);
             this.acks = acks;
             this.topicPartitions = topicPartitions;
             this.toUpdate = toUpdate;
             this.timeout = timeout;
             this.fromLeader = fromLeader;
+            if(fromLeader)
+                this.isExclusive = true;
+            else
+                this.isExclusive = isExclusive;
         }
 
         @Override
         public RDMAProduceAddressRequest build(short version) {
 
-            return new RDMAProduceAddressRequest(version, acks, topicPartitions, toUpdate, timeout, fromLeader);
+            return new RDMAProduceAddressRequest(version, acks, topicPartitions, toUpdate, timeout, fromLeader,isExclusive);
         }
 
 
@@ -128,29 +129,23 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
         }
     }
 
-
     private final List<TopicPartition> topicPartitions;
     private final List<TopicPartition> toUpdate;
     private final int timeout;
     private final short acks;
     private final boolean isFromLeader;
+    private final boolean isExclusive;
 
     private RDMAProduceAddressRequest(short version, short acks,
                                       List<TopicPartition> topicPartitions,
-                                      List<TopicPartition> toUpdate, int timeout) {
-        this(version, acks, topicPartitions, toUpdate, timeout, false);
-    }
-
-
-    private RDMAProduceAddressRequest(short version, short acks,
-                                      List<TopicPartition> topicPartitions,
-                                      List<TopicPartition> toUpdate, int timeout, boolean isFromLeader) {
+                                      List<TopicPartition> toUpdate, int timeout, boolean isFromLeader, boolean isExclusive) {
         super(ApiKeys.PRODUCER_RDMA_REGISTER, version);
         this.acks = acks;
         this.topicPartitions = topicPartitions;
         this.toUpdate = toUpdate;
         this.timeout = timeout;
         this.isFromLeader = isFromLeader;
+        this.isExclusive = isExclusive;
     }
 
 
@@ -158,6 +153,7 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
     public RDMAProduceAddressRequest(Struct struct, short version) {
         super(ApiKeys.PRODUCER_RDMA_REGISTER, version);
         this.isFromLeader = struct.get(IS_FROM_LEADER);
+        this.isExclusive = struct.get(IS_EXCLUSIVE);
         Object[] topicArray = struct.get(TOPICS);
         if (topicArray != null) {
             topicPartitions = new ArrayList<>();
@@ -196,6 +192,7 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
         Struct struct = new Struct(ApiKeys.PRODUCER_RDMA_REGISTER.requestSchema(version()));
 
         struct.set(IS_FROM_LEADER, isFromLeader);
+        struct.set(IS_EXCLUSIVE,isExclusive);
 
         Map<String, List<Integer>> topicsData = CollectionUtils.groupPartitionsByTopic(topicPartitions);
 
@@ -296,11 +293,13 @@ public class RDMAProduceAddressRequest extends AbstractRequest {
     public boolean isFromLeader() {
         return isFromLeader;
     }
+    public boolean isExclusive() {
+        return isExclusive;
+    }
 
     public int timeout() {
         return timeout;
     }
-
 
     public static ProduceRequest parse(ByteBuffer buffer, short version) {
         return new ProduceRequest(ApiKeys.PRODUCER_RDMA_REGISTER.parseRequest(version, buffer), version);

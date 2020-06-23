@@ -133,7 +133,10 @@ public class SimpleVerbsEP {
         }
         int compl = this.sendpoll.execute().getPolls();
         for (int i = 0; i < compl; i++) {
-            if (sendwcList[i].getOpcode() == IbvWC.IbvWcOpcode.IBV_WC_RDMA_READ.getOpcode()) {
+            int opcode = sendwcList[i].getOpcode();
+            if (opcode == IbvWC.IbvWcOpcode.IBV_WC_RDMA_READ.getOpcode() ||
+                opcode == IbvWC.IbvWcOpcode.IBV_WC_FETCH_ADD.getOpcode())
+            {
                 canSendRequests++;
             }
             recvList.add(sendwcList[i]);

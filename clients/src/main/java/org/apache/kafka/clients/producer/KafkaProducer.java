@@ -485,6 +485,8 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 logContext);
         int retries = configureRetries(producerConfig, transactionManager != null, log);
         short acks = configureAcks(producerConfig, transactionManager != null, log);
+        boolean rdmaExclusive = producerConfig.getBoolean(ProducerConfig.EXCLUSIVE_RDMA);
+
         return new Sender(logContext,
                 client,
                 metadata,
@@ -498,7 +500,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 requestTimeoutMs,
                 producerConfig.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG),
                 this.transactionManager,
-                apiVersions, rdmaClient);
+                apiVersions, rdmaClient, rdmaExclusive);
     }
 
     private static int lingerMs(ProducerConfig config) {

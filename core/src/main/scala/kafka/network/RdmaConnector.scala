@@ -85,6 +85,9 @@ class RdmaConnector(pd:IbvPd,  completion_queue_size: Int, sendSize: Int, receiv
     // now let's connect to the server
     val connParam = new RdmaConnParam
     connParam.setRetry_count(2.toByte)
+    connParam.setRnr_retry_count(2.toByte)
+    connParam.setInitiator_depth(0.toByte);
+    connParam.setResponder_resources(0.toByte);
     idPriv.connect(connParam)
     // wait until we are really connected
     val cmEvent = cmChannel.getCmEvent(-1)

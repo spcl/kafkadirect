@@ -17,10 +17,14 @@
 
 package org.apache.kafka.clients.producer.internals;
 
+import com.ibm.disni.util.MemoryUtils;
+import org.apache.kafka.clients.ProduceAtomicFetchRDMAWriteRequest;
 import org.apache.kafka.clients.ProduceRDMAWriteRequest;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.requests.RDMAProduceAddressResponse;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -93,7 +97,8 @@ public class RdmaSessionHandlers {
 
         private long lastUpdateRequested;
 
-        private long currentAddress;
+        private long startAddress;
+        private long offsetAddress; // I use long to detect overflow
         private long lastAddress;
 
         private long baseOffset;
@@ -101,21 +106,35 @@ public class RdmaSessionHandlers {
         private int immdata;
 
 
+        private long slotAddress;
+        private int slotRkey;
+
+
+        ByteBuffer localSlot;
+        private long localSlotAddress;
+        private int localSlotLkey;
+
+        boolean hasPending = false;
+
+
+
         ProduceRdmaRequestData(TopicPartition topicPartition, RdmaBufferPool pool, long nowMs, long tcptimeout) {
             this.topicPartition = topicPartition;
             this.pool = pool;
             this.lastUpdateRequested = nowMs;
-            this.currentAddress = -1;
+            this.startAddress = -1;
+            this.offsetAddress = -1;
             this.lastAddress = -1;
             this.rkey = -1;
             this.immdata = -1;
             this.baseOffset = -1L;
             this.tcptimeout = tcptimeout;
+            this.localSlot= null;
         }
 
 
         boolean requiresAddressUpdate(long nowMs) {
-            if (!isReady() && nowMs - lastUpdateRequested > tcptimeout) {
+            if (baseOffset == -1L  && nowMs - lastUpdateRequested > tcptimeout) {
                 lastUpdateRequested = nowMs;
                 return true;
             } else {
@@ -124,19 +143,37 @@ public class RdmaSessionHandlers {
         }
 
         boolean isReady() {
-            return baseOffset != -1L;
+            return (baseOffset != -1L && !hasPending);
         }
 
-        public void update(RDMAProduceAddressResponse.PartitionResponse data) {
+        public void update(RDMAProduceAddressResponse.PartitionResponse data)   {
             if (data.baseOffset == this.baseOffset) {
                 System.out.println("Received the same metadata twice");
                 return;
             }
-            this.currentAddress = data.address;
+            this.startAddress = data.address;
+            this.offsetAddress  = data.addrPositionOffset;
             this.lastAddress = data.address + data.length;
             this.rkey = data.rkey;
             this.immdata = data.immdata;
             this.baseOffset = data.baseOffset;
+
+
+
+            // for shared access
+            this.slotAddress = data.slotAddress;
+            this.slotRkey = data.slotRkey;
+
+            if(this.slotAddress != 0 && localSlot==null){
+                try {
+                    this.localSlot = pool.allocateSlot();
+                } catch (Exception exp){
+                    System.out.printf("Error on allocate slot\n");
+                }
+                this.localSlot.order(ByteOrder.LITTLE_ENDIAN);
+                localSlotAddress = MemoryUtils.getAddress(localSlot);
+                localSlotLkey = pool.getSlotLkey();
+            }
         }
 
         public boolean fitsBatch(ProducerBatch batch) {
@@ -154,7 +191,21 @@ public class RdmaSessionHandlers {
         }
 
         protected boolean fitsBatch(int size) {
-            return (lastAddress - currentAddress) >= size;
+            //return (lastAddress - startAddress - offsetAddress) >= size;
+            return (lastAddress - startAddress - offsetAddress) != 0;
+        }
+
+        public boolean setOffset(long offset,int size){
+            if(offset < offsetAddress){
+                System.out.println("FAA Offset is smaller because of overflow");
+                return false;
+            }
+            if(offset + size > (lastAddress - startAddress )){
+                offsetAddress = (lastAddress - startAddress); // to force be full
+                return false;
+            }
+            offsetAddress = (offset + size);
+            return true;
         }
 
         public ProduceRDMAWriteRequest createRequest(ProducerBatch batch) {
@@ -162,8 +213,17 @@ public class RdmaSessionHandlers {
             int lkey = pool.getLkey(batch.buffer());
             int size = batch.estimatedSizeInBytes();
             assert fitsBatch(size);
-            ProduceRDMAWriteRequest request = new ProduceRDMAWriteRequest(batch, baseOffset, currentAddress, rkey, lkey, immdata);
-            currentAddress += size;
+            ProduceRDMAWriteRequest request = new ProduceRDMAWriteRequest(batch, baseOffset, startAddress, rkey, lkey, immdata,this);
+
+            if(this.slotAddress == 0) {
+                request.incrementAddress((int)offsetAddress);
+                offsetAddress += size;
+            }  else{
+                hasPending = true;
+                long addval = ((1L << 40) +  size);
+                ProduceAtomicFetchRDMAWriteRequest prereq = new ProduceAtomicFetchRDMAWriteRequest(slotAddress, slotRkey,localSlotAddress,localSlotLkey,localSlot,addval);
+                request.setAtomicPreop(prereq);
+            }
             return request;
         }
 

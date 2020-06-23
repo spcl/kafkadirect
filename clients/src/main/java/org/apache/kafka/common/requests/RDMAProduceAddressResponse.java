@@ -67,12 +67,20 @@ public class RDMAProduceAddressResponse extends AbstractResponse {
 
     private static final Field.Int64 ADDRESS = new Field.Int64("address",
             "The address associated with the returned offset");
+    private static final Field.Int32 ADDRESSPOSOFFSET = new Field.Int32("addressposoffset",
+            "The address associated with the returned offset");
+
     private static final Field.Int32 RKEY = new Field.Int32("rkey",
             "The address associated with the returned offset");
     private static final Field.Int32 IMMDATA = new Field.Int32("immdata",
             "The address associated with the returned offset");
     private static final Field.Int32 LENGTH = new Field.Int32("length",
             "Length of the address");
+
+    private static final Field.Int64 SLOTADDRESS = new Field.Int64("slotaddress",
+            "The address associated with the slot for shared produce");
+    private static final Field.Int32 SLOTRKEY = new Field.Int32("slotrkey",
+            "The rkey associated with the slot for shared produce");
 
     private static final Schema RDMA_PRODUCE_ADDRESS_RESPONSE_V0 = new Schema(
             HOST, PORT,
@@ -81,7 +89,7 @@ public class RDMAProduceAddressResponse extends AbstractResponse {
                     new Field(PARTITION_RESPONSES_KEY_NAME, new ArrayOf(new Schema(
                             PARTITION_ID,
                             ERROR_CODE,
-                            new Field(BASE_OFFSET_KEY_NAME, INT64), OFFSET, ADDRESS, RKEY, IMMDATA, LENGTH
+                            new Field(BASE_OFFSET_KEY_NAME, INT64), OFFSET, ADDRESS, ADDRESSPOSOFFSET, RKEY, IMMDATA, LENGTH,SLOTADDRESS,SLOTRKEY
                     )))))));
 
 
@@ -123,10 +131,13 @@ public class RDMAProduceAddressResponse extends AbstractResponse {
                 long offset = partRespStruct.get(OFFSET);
                 TopicPartition tp = new TopicPartition(topic, partition);
                 long address = partRespStruct.get(ADDRESS);
+                int addrPosOffset=  partRespStruct.get(ADDRESSPOSOFFSET);
                 int rkey = partRespStruct.get(RKEY);
                 int immdata = partRespStruct.get(IMMDATA);
                 int length = partRespStruct.get(LENGTH);
-                responses.put(tp, new PartitionResponse(error, baseOffset, offset, address, rkey, immdata, length));
+                long slotaddress = partRespStruct.get(SLOTADDRESS);
+                int slotrkey = partRespStruct.get(SLOTRKEY);
+                responses.put(tp, new PartitionResponse(error, baseOffset, offset, address, addrPosOffset, rkey, immdata, length,slotaddress,slotrkey));
             }
         }
     }
@@ -157,10 +168,12 @@ public class RDMAProduceAddressResponse extends AbstractResponse {
                         .set(BASE_OFFSET_KEY_NAME, part.baseOffset)
                         .set(OFFSET, part.offset)
                         .set(ADDRESS, part.address)
+                        .set(ADDRESSPOSOFFSET, part.addrPositionOffset)
                         .set(RKEY, part.rkey)
                         .set(IMMDATA, part.immdata)
-                        .set(LENGTH, part.length);
-
+                        .set(LENGTH, part.length)
+                        .set(SLOTADDRESS, part.slotAddress)
+                        .set(SLOTRKEY, part.slotRkey);
                 partitionArray.add(partStruct);
             }
             topicData.set(PARTITION_RESPONSES_KEY_NAME, partitionArray.toArray());
@@ -194,26 +207,34 @@ public class RDMAProduceAddressResponse extends AbstractResponse {
     public static final class PartitionResponse {
         final public Errors error;
         final public long baseOffset;
-
         final public long offset;
-        final public Long address;
-        final public Integer rkey;
-        final public Integer immdata;
-        final public Integer length;
 
+        final public Long address;
+        final public int addrPositionOffset;
+        final public int rkey;
+        final public int immdata;
+        final public int length;
+
+        // for shared produce
+        final public long slotAddress;
+        final public int slotRkey;
 
         public PartitionResponse(Errors error) {
-            this(error, UNKNOWN_OFFSET, UNKNOWN_OFFSET, UNKNOWN_ADDRESS, UNKNOWN_RKEY, UNKNOWN_IMMDATA, UNKNOWN_LENGTH);
+            this(error, UNKNOWN_OFFSET, UNKNOWN_OFFSET, UNKNOWN_ADDRESS, UNKNOWN_RKEY,UNKNOWN_RKEY, UNKNOWN_IMMDATA, UNKNOWN_LENGTH,UNKNOWN_ADDRESS,UNKNOWN_RKEY);
         }
 
-        public PartitionResponse(Errors error, long baseOffset, long offset, long address, int rkey,  int immdata, int length) {
+        public PartitionResponse(Errors error, long baseOffset, long offset, long address, int addrPositionOffset, int rkey,  int immdata,
+                                 int length, long slotAddress, int slotRkey) {
             this.error = error;
             this.offset = offset;
             this.baseOffset = baseOffset;
             this.address = address;
+            this.addrPositionOffset = addrPositionOffset;
             this.rkey = rkey;
             this.immdata = immdata;
             this.length = length;
+            this.slotAddress = slotAddress;
+            this.slotRkey = slotRkey;
         }
 
         @Override
@@ -228,6 +249,7 @@ public class RDMAProduceAddressResponse extends AbstractResponse {
             b.append(", address: ").append(address).
                     append(", rkey: ").append(rkey).
                     append(", length: ").append(length);
+            b.append("slot info: ").append(slotAddress).append(", slotrkey: ").append(slotRkey);
             return b.toString();
         }
     }

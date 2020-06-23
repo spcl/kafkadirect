@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import kafka.network._
 import kafka.utils._
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 import java.util.concurrent.ConcurrentHashMap
 
 import com.ibm.disni.verbs.{IbvMr, IbvPd}
@@ -75,8 +75,12 @@ class RDMAManager(brokerId: Int, rdmaServer: RDMAServer, maxNumberOfConsumers: I
   private val mapSegmentToSlot =  new HashMap[RegisteredSegment , ListBuffer[Slot]]()
 
 
+  private val mapProduceSegmentToSlot =  new HashMap[RegisteredSegment , Slot]()
+
   // it is returned if the slot is requested for sealed file
   val fakeSlot: FakeSlot = new FakeSlot
+
+
 
 
   def isWithRdma(): Boolean = rdmaServer.isWithRdma
@@ -218,11 +222,37 @@ class RDMAManager(brokerId: Int, rdmaServer: RDMAServer, maxNumberOfConsumers: I
 }
 
 
-class ProducerRdmaManager{
+class ProducerSlotSegment (val tp: TopicPartition, val baseOffset: Long,  val buffer: ByteBuffer)
+{
+
+  override def equals(any: Any): Boolean = {
+    any match {
+      case that: ProducerSlotSegment => this.tp == that.tp && this.baseOffset == that.baseOffset
+      case _ => false
+    }
+  }
+
+  override def hashCode(): Int = {
+    return 31 * tp.hashCode() + baseOffset.hashCode()
+  }
+
+}
+
+class ProducerRdmaManager(rdmaPD: Option[IbvPd] ){
 
   /* ConsumerId -> Segment*/
   private val mapProducerIdToSegment =  new HashMap[Int,ProducerSegment]()
 
+  private var counter = 0;
+  private val produceSlots = ByteBuffer.allocateDirect(4096).order(ByteOrder.LITTLE_ENDIAN); // RDMA FAA works in Little end
+
+  private val mapSegmentToSlot=  new HashMap[RegisteredSegment,ByteBuffer]()
+
+  private val produceSlotsMr: IbvMr = rdmaPD.map(
+    pd => pd.regMr(produceSlots,IbvMr.IBV_ACCESS_REMOTE_ATOMIC | IbvMr.IBV_ACCESS_LOCAL_WRITE |
+      IbvMr.IBV_ACCESS_REMOTE_WRITE | IbvMr.IBV_ACCESS_REMOTE_READ).execute().free().getMr()).getOrElse(null)
+
+  //val slotBuf:ByteBuffer = consumerBuffer.duplicate().position(offsetInBuffer).limit(offsetInBuffer+SlotSize.get).asInstanceOf[ByteBuffer].slice()
   def GetSegmentFromProducerId(imm_data: Int): ProducerSegment = synchronized{
     return mapProducerIdToSegment(imm_data)
   }
@@ -230,7 +260,7 @@ class ProducerRdmaManager{
   def createProducerIdForSegment(tp: TopicPartition, baseOffset: Long,
                                  position: Long, clientId: String,
                                  buffer: ByteBuffer,  request: RequestChannel.Request,
-                                 acks: Short,  timeout: Long, isFromLeader: Boolean): Int = synchronized {
+                                 acks: Short,  timeout: Long, isFromLeader: Boolean, exclusive:Boolean): Int = synchronized {
 
 
     val found = mapProducerIdToSegment.find( {case (id,segment) => segment.baseOffset == baseOffset && segment.tp == tp } )
@@ -258,6 +288,35 @@ class ProducerRdmaManager{
     return consumerImmId
   }
 
+
+  def createOrGetProduceSlot(exclusive: Boolean, tp: TopicPartition, baseOffset: Long, position: Long):IbvMr = synchronized {
+    if(exclusive){
+      return new IbvMr(null,0,0,0,0,0,0);
+    }
+    val toFind = RegisteredSegment(tp,baseOffset)
+    val slot: ByteBuffer =  mapSegmentToSlot.get(toFind) match {
+      case Some(buf) => buf
+      case None => {
+        // new client
+        val slotBuf:ByteBuffer = produceSlots.duplicate().position(counter*8).limit((counter+1)*8).asInstanceOf[ByteBuffer].slice().order(ByteOrder.LITTLE_ENDIAN)
+        counter = counter+1
+        if(counter*8 == 4096){
+          counter = 0
+        }
+
+        mapSegmentToSlot.retain( {case (toFind,buf) => (toFind.tp != tp) } )
+
+        slotBuf.putLong(position).position(0)
+        mapSegmentToSlot.put(toFind, slotBuf)
+        slotBuf
+      }
+    }
+    val address = slot.asInstanceOf[DirectBuffer].address()
+    return new IbvMr(null,address,8,0,0,produceSlotsMr.getRkey,0);
+  }
+
+
+
 }
 
 object SlotSize {
@@ -283,8 +342,6 @@ class ProducerSegment (val tp: TopicPartition, val baseOffset: Long,
   }
 
 }
-
-
 
 class FakeSlot( ) extends Slot(null,"",-1,-1L) {
 
