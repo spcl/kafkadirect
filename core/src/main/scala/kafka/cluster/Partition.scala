@@ -796,6 +796,7 @@ class Partition(val topicPartition: TopicPartition,
           val info = log.rdmaAppendAsLeader(expected_position, records, leaderEpoch = this.leaderEpoch, isFromClient,
             interBrokerProtocolVersion)
 
+
           // we may need to increment high watermark since ISR could be down to 1
           (info, maybeIncrementLeaderHW(leaderReplica))
 

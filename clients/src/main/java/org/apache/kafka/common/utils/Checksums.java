@@ -38,7 +38,13 @@ public final class Checksums {
     }
 
     public static void update(Checksum checksum, ByteBuffer buffer, int offset, int length) {
-        if (buffer.hasArray()) {
+        if(buffer.isDirect()){ // for efficient RDMA
+            ByteBuffer t = buffer.duplicate();
+            t.position(offset);
+            t.limit(offset+length);
+            t = t.slice();
+            checksum.update(t);
+        } else  if (buffer.hasArray()) {
             checksum.update(buffer.array(), buffer.position() + buffer.arrayOffset() + offset, length);
         } else {
             int start = buffer.position() + offset;

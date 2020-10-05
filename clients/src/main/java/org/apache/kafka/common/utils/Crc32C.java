@@ -23,6 +23,8 @@ import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
 import java.util.zip.Checksum;
 
+//import java.util.zip.CRC32C;
+
 /**
  * A class that can be used to compute the CRC32C (Castagnoli) of a ByteBuffer or array of bytes.
  *
@@ -37,10 +39,14 @@ public final class Crc32C {
     private static final ChecksumFactory CHECKSUM_FACTORY;
 
     static {
-        if (Java.IS_JAVA9_COMPATIBLE)
+        if (Java.IS_JAVA9_COMPATIBLE) {
             CHECKSUM_FACTORY = new Java9ChecksumFactory();
-        else
+            System.out.println("Uses correct crc32c code");
+        }
+        else {
             CHECKSUM_FACTORY = new PureJavaChecksumFactory();
+            System.out.println("crc32c is broken");
+        }
     }
 
     private Crc32C() {}

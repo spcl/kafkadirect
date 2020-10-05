@@ -162,6 +162,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       bytesPerPartition,
       responseCallback = sendResponseCallback)
 
+
   }
 
   def sendRdmaResponse(request: RequestChannel.RdmaRequest, errorInResponse: Boolean): Unit = {
@@ -576,6 +577,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       val internalTopicsAllowed = request.header.clientId == AdminUtils.AdminClientId
 
       // call the replica manager to append messages to the replicas
+
       replicaManager.appendRecords(
         timeout = produceRequest.timeout.toLong,
         requiredAcks = produceRequest.acks,
@@ -1850,6 +1852,7 @@ class KafkaApis(val requestChannel: RequestChannel,
     ensureInterBrokerVersion(KAFKA_0_11_0_IV0)
     val endTxnRequest = request.body[EndTxnRequest]
     val transactionalId = endTxnRequest.transactionalId
+    val transactionalId = endTxnRequest.transactionalId
 
     if (authorize(request.session, Write, Resource(TransactionalId, transactionalId, LITERAL))) {
       def sendResponseCallback(error: Errors) {
@@ -1959,6 +1962,7 @@ class KafkaApis(val requestChannel: RequestChannel,
           val endTxnMarker = new EndTransactionMarker(controlRecordType, marker.coordinatorEpoch)
           partition -> MemoryRecords.withEndTransactionMarker(producerId, marker.producerEpoch, endTxnMarker)
         }.toMap
+
 
         replicaManager.appendRecords(
           timeout = config.requestTimeoutMs.toLong,

@@ -1075,7 +1075,10 @@ class Log(@volatile var dir: File,
   private def rdmaAppend(expected_position: Int, records: MemoryRecords, isFromClient: Boolean, interBrokerProtocolVersion: ApiVersion, assignOffsets: Boolean, leaderEpoch: Int, withRdmaReplication:Boolean = false): LogAppendInfo =
     maybeHandleIOException(s"Error while appending records to $topicPartition in dir ${dir.getParent}") {
 
+
+
     val appendInfo = analyzeAndValidateRecords(records, isFromClient = isFromClient)
+
 
     val validBytes = appendInfo.validBytes
     if (validBytes < 0)
@@ -1249,6 +1252,7 @@ class Log(@volatile var dir: File,
 
       appendInfo
     }
+
   }
 
   def maybeAssignEpochStartOffset(leaderEpoch: Int, startOffset: Long): Unit = {
@@ -1471,6 +1475,8 @@ class Log(@volatile var dir: File,
     var lastOffsetOfFirstBatch = -1L
 
     for (batch <- records.batches.asScala) {
+
+
       // we only validate V2 and higher to avoid potential compatibility issues with older clients
       if (batch.magic >= RecordBatch.MAGIC_VALUE_V2 && isFromClient && batch.baseOffset != 0)
         throw new InvalidRecordException(s"The baseOffset of the record batch in the append to $topicPartition should " +
@@ -1505,7 +1511,7 @@ class Log(@volatile var dir: File,
           s"which exceeds the maximum configured value of ${config.maxMessageSize}.")
       }
 
-      // check the validity of the message by checking CRC
+
       batch.ensureValid()
 
       if (batch.maxTimestamp > maxTimestamp) {
@@ -1519,6 +1525,8 @@ class Log(@volatile var dir: File,
       val messageCodec = CompressionCodec.getCompressionCodec(batch.compressionType.id)
       if (messageCodec != NoCompressionCodec)
         sourceCodec = messageCodec
+
+
     }
 
     // Apply broker-side compression if any

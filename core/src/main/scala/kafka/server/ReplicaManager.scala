@@ -542,6 +542,7 @@ class ReplicaManager(val config: KafkaConfig,
                     responseCallback: Map[TopicPartition, PartitionResponse] => Unit ) {
 
 
+
       if (isFromLeader) {
 
         appendRdmaRecordsFromLeader(bytesPerPartition,responseCallback)
@@ -552,11 +553,13 @@ class ReplicaManager(val config: KafkaConfig,
 
         val entriesPerPartition = for ((tp, _) <- bytesPerPartition) yield (tp, null)
 
-        val sTime = time.milliseconds
+      //  val sTime = time.milliseconds
+
 
         val localProduceResults = rdmaAppendToLocalLog(internalTopicsAllowed = internalTopicsAllowed,
           isFromClient = !isFromLeader, bytesPerPartition, requiredAcks)
-        debug("Produce to local log in %d ms".format(time.milliseconds - sTime))
+       // debug("Produce to local log in %d ms".format(time.milliseconds - sTime))
+
 
         val produceStatus = localProduceResults.map { case (topicPartition, result) =>
           topicPartition ->
@@ -584,6 +587,7 @@ class ReplicaManager(val config: KafkaConfig,
           responseCallback(produceResponseStatus)
         }
       }
+
   }
 
   def appendRdmaRecordsFromLeader(
@@ -919,7 +923,9 @@ class ReplicaManager(val config: KafkaConfig,
       } else {
         try {
           val partition = getPartitionOrException(topicPartition, expectLeader = true)
+
           val appendInfo = partition.rdmaAppendRecordsToLeader(expected_position, records, isFromClient, requiredAcks)
+
           val numAppendedMessages = appendInfo.numMessages
          // expected_position: Int, records: MemoryRecords,
           // update stats for successfully appended bytes and messages as bytesInRate and messageInRate

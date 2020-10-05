@@ -1065,6 +1065,7 @@ public final class RecordAccumulator {
         int start = rdmaDrainIndex = rdmaDrainIndex % parts.size();
         /* to make starvation less likely this loop doesn't start at 0 */
         boolean stop = false;
+
         do {
             PartitionInfo part = parts.get(rdmaDrainIndex);
             TopicPartition tp = new TopicPartition(part.topic(), part.partition());
@@ -1083,6 +1084,7 @@ public final class RecordAccumulator {
                             // invariant: !isMuted(tp,now) && deque != null
                             ProducerBatch first = deque.peekFirst();
                             if (first != null) {
+
                                 if (!rdmaSessionHandlers.fitsBatch(tp, first)) {
                                     if (rdmaSessionHandlers.canSendNewFileRequest(tp, now)) {
                                         GetAddressRequestInfo addrInfo =
@@ -1101,6 +1103,7 @@ public final class RecordAccumulator {
                                         } else if (shouldStopDrainBatchesForPartition(first, tp)) {
                                             stop = true;
                                         } else {
+
                                             size = drainBatch(now, size, ready, tp, deque);
                                         }
                                     }
@@ -1111,6 +1114,8 @@ public final class RecordAccumulator {
                 }
             }
         } while (start != rdmaDrainIndex && !stop);
+
+
 
         return ready;
     }
@@ -1129,13 +1134,19 @@ public final class RecordAccumulator {
 
             transactionManager.addInFlightBatch(batch);
         }
+
+
         batch.close();
+
         size += batch.records().sizeInBytes();
+
 
         ProduceRDMAWriteRequest req = rdmaSessionHandlers.createRequest(tp, batch);
 
         ready.add(req);
         batch.drained(now);
+
+
         return size;
     }
 

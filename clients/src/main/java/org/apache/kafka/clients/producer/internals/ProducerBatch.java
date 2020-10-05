@@ -416,6 +416,7 @@ public final class ProducerBatch {
 
     public void close() {
         recordsBuilder.close();
+
         if (!recordsBuilder.isControlBatch()) {
             CompressionRatioEstimator.updateEstimation(topicPartition.topic(),
                                                        recordsBuilder.compressionType(),

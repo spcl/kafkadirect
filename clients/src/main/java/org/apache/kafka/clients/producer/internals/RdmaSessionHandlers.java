@@ -191,8 +191,8 @@ public class RdmaSessionHandlers {
         }
 
         protected boolean fitsBatch(int size) {
-            //return (lastAddress - startAddress - offsetAddress) >= size;
-            return (lastAddress - startAddress - offsetAddress) != 0;
+            return (lastAddress - startAddress - offsetAddress) >= size;
+            //return (lastAddress - startAddress - offsetAddress) != 0; // for debugging
         }
 
         public boolean setOffset(long offset,int size){

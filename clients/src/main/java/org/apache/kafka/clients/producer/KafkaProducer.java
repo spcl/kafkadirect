@@ -486,6 +486,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
         int retries = configureRetries(producerConfig, transactionManager != null, log);
         short acks = configureAcks(producerConfig, transactionManager != null, log);
         boolean rdmaExclusive = producerConfig.getBoolean(ProducerConfig.EXCLUSIVE_RDMA);
+        if(!rdmaExclusive) System.out.println("RDMA Shared access");
 
         return new Sender(logContext,
                 client,

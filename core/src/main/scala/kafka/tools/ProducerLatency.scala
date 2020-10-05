@@ -21,11 +21,12 @@ object ProducerLatency {
     val numMessages = args(2).toInt
     val producerAcks = args(3)
     val messageLen = args(4).toInt
-    val withrdma = args(5).contentEquals("withrdma")
+    val withrdmashared = args(5).contentEquals("withrdmashared")
+    val withrdma = args(5).contentEquals("withrdma") || withrdmashared
     val propsFile = if (args.length > 6) Some(args(6)).filter(_.nonEmpty) else None
     val warmup = 2000
 
-
+  //  System.out.println("With shared access")
 
     if (!List("1", "all").contains(producerAcks))
       throw new IllegalArgumentException("Latency testing requires synchronous acknowledgement. Please use 1 or all")
@@ -39,6 +40,7 @@ object ProducerLatency {
     val producerProps = loadPropsWithBootstrapServers
     producerProps.put(ProducerConfig.LINGER_MS_CONFIG, "0") //ensure writes are synchronous
     producerProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, Long.MaxValue.toString)
+    producerProps.put(ProducerConfig.EXCLUSIVE_RDMA, (!withrdmashared).toString)
     producerProps.put(ProducerConfig.ACKS_CONFIG, producerAcks.toString)
     producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
     producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
@@ -74,7 +76,7 @@ object ProducerLatency {
 
 
       //Report progress
-      if (i % 1000 == 0)
+      if (i % 100 == 0)
         println(i + "\t" + elapsed / 1000.0 + " us")
       totalTime += elapsed
       latencies(i) = elapsed

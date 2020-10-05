@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 
 
 object ConsumerLatency {
-  private val timeout: Long = 60000
+  private val timeout: Long = 10
   private val entryheadersize: Int = 72 // TODO check that is always true.
 
   def main(args: Array[String]) {

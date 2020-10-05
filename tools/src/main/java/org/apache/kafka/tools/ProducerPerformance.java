@@ -47,7 +47,7 @@ public class ProducerPerformance {
 
     public static void main(String[] args) throws Exception {
         ArgumentParser parser = argParser();
-
+        long superstartMs = System.currentTimeMillis();
         try {
             Namespace res = parser.parseArgs(args);
 
@@ -125,7 +125,7 @@ public class ProducerPerformance {
                     payload[i] = (byte) (random.nextInt(26) + 65);
             }
             ProducerRecord<byte[], byte[]> record;
-            Stats stats = new Stats(numRecords, 500);
+            Stats stats = new Stats(numRecords, 100);
             long startMs = System.currentTimeMillis();
 
             ThroughputThrottler throttler = new ThroughputThrottler(throughput, startMs);
@@ -183,7 +183,10 @@ public class ProducerPerformance {
                 /* print out metrics */
                 ToolsUtils.printMetrics(producer.metrics());
                 producer.close();
+
             }
+            long superendMs = System.currentTimeMillis();
+            System.out.printf("Total time of the process is %d ms\n",superendMs-superstartMs);
         } catch (ArgumentParserException e) {
             if (args.length == 0) {
                 parser.printHelp();

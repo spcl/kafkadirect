@@ -396,6 +396,7 @@ public class Sender implements Runnable {
 
         Map<Node, RecordAccumulator.GetAddressRequestInfo> getAddressRequestInfoMap = new HashMap<>();
         // rdma batches
+
         Map<Integer, List<ProduceRDMAWriteRequest>> rdmabatches = this.accumulator.drainRdma(cluster, result.readyNodes,  this.maxRequestSize, now, getAddressRequestInfoMap);
 
         if (!getAddressRequestInfoMap.isEmpty()) {

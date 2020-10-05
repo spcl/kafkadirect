@@ -312,10 +312,13 @@ public class MemoryRecordsBuilder implements AutoCloseable {
 
         closeForRecordAppends();
 
+
+
         if (numRecords == 0L) {
             buffer().position(initialPosition);
             builtRecords = MemoryRecords.EMPTY;
         } else {
+
             if (magic > RecordBatch.MAGIC_VALUE_V1)
                 this.actualCompressionRatio = (float) writeDefaultBatchHeader() / this.uncompressedRecordsSizeInBytes;
             else if (compressionType != CompressionType.NONE)
@@ -324,8 +327,12 @@ public class MemoryRecordsBuilder implements AutoCloseable {
             ByteBuffer buffer = buffer().duplicate();
             buffer.flip();
             buffer.position(initialPosition);
+
             builtRecords = MemoryRecords.readableRecords(buffer.slice());
+
         }
+
+
     }
 
     private void validateProducerState() {
