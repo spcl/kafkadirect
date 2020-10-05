@@ -122,10 +122,15 @@ object ConsumerPerformance extends LazyLogging {
     var lastReportTime: Long = currentTimeMillis
     var lastConsumedTime = currentTimeMillis
 
+    val fetchspeed = new util.LinkedList[Long]()
+
     while (messagesRead < count && currentTimeMillis - lastConsumedTime <= timeout) {
 
       val records = if (config.withRdma) consumer.RDMApoll(Duration.ofMillis(100)).asScala
                                     else consumer.poll(Duration.ofMillis(100)).asScala
+
+      fetchspeed.addLast(consumer.getSendCounter());
+
       currentTimeMillis = System.currentTimeMillis
       if (records.nonEmpty)
         lastConsumedTime = currentTimeMillis
@@ -151,11 +156,22 @@ object ConsumerPerformance extends LazyLogging {
     if (messagesRead < count)
       println(s"WARNING: Exiting before consuming the expected number of messages: timeout ($timeout ms) exceeded. " +
         "You can use the --timeout option to increase the timeout. Consumed %d entries".format(messagesRead))
+
     totalMessagesRead.set(messagesRead)
     totalBytesRead.set(bytesRead)
     if (config.showDetailedStats)
       printConsumerProgress(0, bytesRead, lastBytesRead, messagesRead, lastMessagesRead,
         lastReportTime, currentTimeMillis, config.dateFormat, joinTimeMsInSingleRound)
+
+
+    printf("\n\n");
+    var lastval: Long = 0
+    for( value <- fetchspeed.asScala){
+      printf("%d ",value-lastval)
+      lastval = value
+    }
+    printf("\n");
+
   }
 
   def printConsumerProgress(id: Int,
@@ -257,6 +273,11 @@ object ConsumerPerformance extends LazyLogging {
       .describedAs("milliseconds")
       .ofType(classOf[Long])
       .defaultsTo(10000)
+    val maxFetchTimeoutOpt = parser.accepts("fetchtime", "The maximum allowed time in milliseconds between returned records.")
+      .withOptionalArg()
+      .describedAs("milliseconds")
+      .ofType(classOf[Int])
+      .defaultsTo(100)
 
     options = parser.parse(args: _*)
 
@@ -282,6 +303,8 @@ object ConsumerPerformance extends LazyLogging {
     props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, classOf[ByteArrayDeserializer])
     props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, classOf[ByteArrayDeserializer])
     props.put(ConsumerConfig.CHECK_CRCS_CONFIG, "false")
+    props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG,  options.valueOf(maxFetchTimeoutOpt).intValue())
+
 
     val numThreads = options.valueOf(numThreadsOpt).intValue
     val topic = options.valueOf(topicOpt)

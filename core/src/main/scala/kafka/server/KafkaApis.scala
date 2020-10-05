@@ -1852,7 +1852,6 @@ class KafkaApis(val requestChannel: RequestChannel,
     ensureInterBrokerVersion(KAFKA_0_11_0_IV0)
     val endTxnRequest = request.body[EndTxnRequest]
     val transactionalId = endTxnRequest.transactionalId
-    val transactionalId = endTxnRequest.transactionalId
 
     if (authorize(request.session, Write, Resource(TransactionalId, transactionalId, LITERAL))) {
       def sendResponseCallback(error: Errors) {

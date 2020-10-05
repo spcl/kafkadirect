@@ -151,6 +151,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private final LinkedList<Float> latencies_with_data; // replies to fetch request with data
     private final LinkedList<Float> latencies_no_data; // replies to fetch request without data
 
+    public long reqcounter = 0;
+
     public Fetcher(LogContext logContext,
                    ConsumerNetworkClient client,
                    int minBytes,
@@ -339,6 +341,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             if (log.isDebugEnabled()) {
                 log.debug("Sending {} {} to broker {}", isolationLevel, data.toString(), fetchTarget);
             }
+            reqcounter++;
             client.send(fetchTarget, request)
                     .addListener(new RequestFutureListener<ClientResponse>() {
                         @Override
@@ -1975,6 +1978,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             nextInLineRecords.drain();
         decompressionBufferSupplier.close();
         //ktaranov: to print latency
+        System.out.printf("Request counter %d \n",reqcounter);
+
         if(!latencies_with_data.isEmpty() && latencies_with_data.size() > warmup){
             for(int i =0 ; i<warmup; i++)   latencies_with_data.pollFirst();
             float[] percs = percentiles(this.latencies_with_data,  0.5, 0.95, 0.99, 0.999);
