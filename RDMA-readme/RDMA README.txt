@@ -22,7 +22,7 @@ How to compile:
 #######################################################
 Install required packages:
 - Scala at least 2.11
-- gradle
+- gradle Recommended 5.1.1
 
 Compilation steps
 1. Install libdisni C library
