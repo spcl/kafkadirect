@@ -26,6 +26,8 @@ Install required packages:
 
 Compilation steps
 1. Install libdisni C library
+is expected to be at file:/home/ktaranov/Documents/disni/target/disni.jar
+
 
 2. run gradle in kafka home directory
 $ gradle
