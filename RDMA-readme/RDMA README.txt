@@ -26,6 +26,7 @@ Install required packages:
 
 Compilation steps
 1. Install libdisni C library
+WE use custom DIsni version with Atomics support. https://github.com/TaranovK/disni
 is expected to be at file:/home/ktaranov/Documents/disni/target/disni.jar
 
 
