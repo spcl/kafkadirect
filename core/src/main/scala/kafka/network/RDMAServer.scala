@@ -378,7 +378,9 @@ private[kafka] class RdmaProcessor(val id: Int,
   connParam.setRetry_count(3.toByte)
   connParam.setRnr_retry_count(3.toByte)
   connParam.setInitiator_depth(0.toByte);
-  connParam.setResponder_resources(16.toByte);
+  val deviceAttr: IbvDeviceAttr = context.queryDevice
+  val maxResponderResources: Int = deviceAttr.getMax_qp_rd_atom
+  connParam.setResponder_resources(maxResponderResources.toByte);
 
   private val newConnections = new ArrayBlockingQueue[RdmaCmId](connectionQueueSize)
 

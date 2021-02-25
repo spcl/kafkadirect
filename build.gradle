@@ -601,6 +601,7 @@ project(':core') {
     }
 
     compileOnly libs.log4j
+    runtimeOnly libs.slf4jlog4j
 
     testCompile project(':clients').sourceSets.test.output
     testCompile libs.bcpkix

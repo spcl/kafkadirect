@@ -17,15 +17,7 @@
 package org.apache.kafka.clients;
 
 
-import com.ibm.disni.verbs.RdmaCmId;
-import com.ibm.disni.verbs.IbvWC;
-import com.ibm.disni.verbs.IbvContext;
-import com.ibm.disni.verbs.IbvCompChannel;
-import com.ibm.disni.verbs.IbvCQ;
-import com.ibm.disni.verbs.IbvQPInitAttr;
-import com.ibm.disni.verbs.IbvQP;
-import com.ibm.disni.verbs.RdmaConnParam;
-import com.ibm.disni.verbs.RdmaCmEvent;
+import com.ibm.disni.verbs.*;
 import org.apache.kafka.common.utils.LogContext;
 
 import java.io.IOException;
@@ -113,11 +105,14 @@ public final class ExclusiveRdmaClient extends RdmaClient {
             throw new IOException("VerbsClient::qp null");
         }
 
+        IbvDeviceAttr deviceAttr = context.queryDevice();
+        int maxInitiatorDepth = deviceAttr.getMax_qp_init_rd_atom();
+
         // now let's connect to the server
         RdmaConnParam connParam = new RdmaConnParam();
         connParam.setRetry_count((byte) 3);
         connParam.setRnr_retry_count((byte)3);
-        connParam.setInitiator_depth((byte)32); // cap.maxSendWr
+        connParam.setInitiator_depth((byte)maxInitiatorDepth); // cap.maxSendWr
         connParam.setResponder_resources((byte)0);
         idPriv.connect(connParam);
 

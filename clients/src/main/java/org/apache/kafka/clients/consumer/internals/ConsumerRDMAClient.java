@@ -54,7 +54,7 @@ public class ConsumerRDMAClient   {
         try {
             rdmaClient.connect(node);
         } catch (Exception e) {
-            System.out.println("Uncaught exception during tryConnect");
+            System.out.println("Uncaught exception during tryConnect rdma");
         }
     }
 
