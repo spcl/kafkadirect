@@ -21,12 +21,13 @@ cluster, not between multiple clusters.
 How to compile:
 #######################################################
 Install required packages:
-- Scala at least 2.11
+- Scala at least 2.12.13
 - gradle Recommended 5.1.1
+- Java 11
 
 Compilation steps
 1. Install libdisni C library
-WE use custom DIsni version with Atomics support. https://github.com/TaranovK/disni
+We use custom DIsni version with Atomics support. https://github.com/TaranovK/disni
 is expected to be at file:/home/ktaranov/Documents/disni/target/disni.jar
 
 
@@ -160,13 +161,6 @@ Please read comments in the example config file producer.properties
 Please read comments in the example config file consumer.properties
 
 
-########################################
-Others
-########################################
-You can also have a look at examples from somebody
-https://gist.github.com/ueokande/b96eadd798fff852551b80962862bfb3
-
-EndToEndLatency will be different as I rewrote it! 
 
 
 
